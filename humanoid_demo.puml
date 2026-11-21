@@ -1,0 +1,80 @@
+@startuml
+title Humanoid Demo C++20 - UML Class and Control Flow
+skinparam classAttributeIconSize 0
+
+class MotorBase {
+  # name_: string
+  # rated_torque_Nm_: double
+  + MotorBase(name: string, torque: double)
+  + ~MotorBase()
+  + actuate(torque: double): void
+}
+
+class LegMotor
+class ArmMotor
+MotorBase <|-- LegMotor
+MotorBase <|-- ArmMotor
+
+abstract class CommunicationBase {
+  + ~CommunicationBase()
+  + transmit(data: vector<uint8_t>): void
+}
+class CANFDInterface
+class EtherCATInterface
+CommunicationBase <|-- CANFDInterface
+CommunicationBase <|-- EtherCATInterface
+
+enum GaitPhase {
+  STAND
+  WALK
+  RUN
+  JUMP
+  NAVIGATE
+}
+
+class Ros2Node {
+  - node_name_: string
+  + spin_once(): void
+  + publish(topic: string, msg: string): void
+}
+
+class MicroRosClient {
+  - agent_name_: string
+  + send_status(status: string): void
+}
+
+abstract class ControllerBase {
+  + ~ControllerBase()
+  + execute(): void
+}
+
+class HumanoidController {
+  - motors_: unordered_map<string, unique_ptr<MotorBase>>
+  - canfd_: unique_ptr<CommunicationBase>
+  - ethercat_: unique_ptr<CommunicationBase>
+  - ros_node_: Ros2Node
+  - micro_ros_: MicroRosClient
+  - phase_: GaitPhase
+  + set_phase(p: GaitPhase): void
+  + execute(): void
+}
+ControllerBase <|-- HumanoidController
+HumanoidController *-- MotorBase
+HumanoidController *-- CommunicationBase
+HumanoidController *-- Ros2Node
+HumanoidController *-- MicroRosClient
+HumanoidController --> GaitPhase
+
+CANFDInterface ..> "CAN-FD" : transmit
+EtherCATInterface ..> "EtherCAT" : transmit
+
+note bottom of HumanoidController
+  execute():
+  1. select torque by gait phase
+  2. command left/right hip motors
+  3. transmit CAN-FD frame
+  4. transmit EtherCAT frame
+  5. publish ROS2 phase
+  6. send microROS status
+end note
+@enduml
